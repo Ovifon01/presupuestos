@@ -1,0 +1,1235 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#ef5a29">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icono-192.png">
+<link rel="apple-touch-icon" href="icono-192.png">
+<title>OVIFON Presupuestos</title>
+<style>
+  :root {
+    --naranja: #ef5a29; --naranja-osc: #d14716; --naranja-claro: #fff4ef;
+    --azul: #1f7fbf; --fondo: #f1f3f5; --panel: #fff; --borde: #d7dce2;
+    --texto: #1d2329; --suave: #67727e; --peligro: #c62828; --ok: #2e7d32;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; overflow-x: hidden; }
+  body { background: var(--fondo); color: var(--texto); font: 16px/1.4 system-ui, "Segoe UI", Roboto, Arial, sans-serif; }
+  button, input, select, textarea { font: inherit; color: inherit; }
+
+  /* ---------- Cabecera ---------- */
+  .cab { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 8px; padding: 8px 12px; padding-top: max(8px, env(safe-area-inset-top));
+         background: #fff; border-bottom: 1px solid var(--borde); }
+  .cab img { height: 32px; }
+  .cab h1 { font-size: 17px; margin: 0; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .nube { border: 1px solid var(--borde); background: #fff; border-radius: 20px; padding: 6px 11px; font-size: 13px; white-space: nowrap; cursor: pointer; }
+  .nube.ok { color: var(--ok); }
+  .nube.aviso { color: var(--naranja-osc); border-color: var(--naranja); background: var(--naranja-claro); font-weight: 600; }
+  .icono { border: 0; background: none; font-size: 22px; padding: 4px 8px; cursor: pointer; }
+
+  main { max-width: 680px; margin: 0 auto; padding: 12px 12px 120px; }
+  h2 { font-size: 20px; margin: 6px 2px 12px; }
+  h3 { font-size: 16px; margin: 0 0 8px; }
+  .tarjeta { background: var(--panel); border-radius: 14px; padding: 14px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+  .nota { font-size: 13px; color: var(--suave); margin: 6px 0 0; }
+  .falta { color: var(--peligro); font-size: 14px; }
+  label { display: block; font-size: 13px; color: var(--suave); margin: 10px 0 4px; }
+  input, select, textarea { width: 100%; padding: 12px; border: 1px solid var(--borde); border-radius: 10px; background: #fff; font-size: 16px; }
+  input:focus, select:focus, textarea:focus { outline: 2px solid #f7b79f; border-color: var(--naranja); }
+  textarea { resize: vertical; min-height: 80px; }
+  .fila2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .fila3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+
+  .boton { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 50px; padding: 10px 14px; margin-top: 10px;
+           border: 1px solid var(--borde); border-radius: 12px; background: #fff; font-size: 16px; font-weight: 600; cursor: pointer; text-decoration: none; color: var(--texto); }
+  .boton.primario { background: var(--naranja); border-color: var(--naranja); color: #fff; }
+  .boton.grande { min-height: 64px; font-size: 19px; }
+  .boton.peligro { color: var(--peligro); }
+  .boton:disabled { opacity: .5; }
+  .boton.mini { width: auto; min-height: 36px; padding: 6px 12px; margin: 0; font-size: 14px; }
+  .botones { display: flex; gap: 8px; } .botones .boton { flex: 1; }
+
+  /* Listas que se tocan */
+  .lista { display: flex; flex-direction: column; gap: 8px; }
+  .item { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; padding: 12px; border: 1px solid var(--borde); border-radius: 12px; background: #fff; cursor: pointer; }
+  .item:active { background: #f6f8fa; }
+  .item.elegido { border-color: var(--naranja); background: var(--naranja-claro); box-shadow: 0 0 0 1px var(--naranja) inset; }
+  .item .txt { flex: 1; min-width: 0; }
+  .item small { display: block; color: var(--suave); font-size: 13px; }
+  .item .precio { text-align: right; font-weight: 700; color: var(--naranja-osc); white-space: nowrap; }
+  .item .precio small { font-weight: 400; }
+  .num { font-weight: 700; min-width: 44px; }
+  .vacio { padding: 16px; text-align: center; color: var(--suave); }
+
+  .chips { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; margin-bottom: 10px; }
+  .chip { flex: none; border: 1px solid var(--borde); border-radius: 20px; padding: 6px 12px; background: #fff; font-size: 14px; cursor: pointer; }
+  .chip.activo { background: var(--naranja); border-color: var(--naranja); color: #fff; font-weight: 600; }
+  .estado { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 12px; font-weight: 600; }
+  .estado.pendiente { background: #fff3cd; color: #8a6100; }
+  .estado.entregado { background: #e1effa; color: #1b5e8c; }
+  .estado.aceptado { background: #dcf5e1; color: #1e6b2e; }
+  .estado.rechazado { background: #fde2e1; color: #a12622; }
+
+  /* Pasos */
+  .progreso { height: 6px; background: #e3e6ea; border-radius: 3px; overflow: hidden; margin: 2px 0 6px; }
+  .progreso div { height: 100%; background: var(--naranja); transition: width .2s; }
+  .paso-tit { display: flex; justify-content: space-between; align-items: baseline; font-size: 13px; color: var(--suave); }
+  .pie-acciones { position: fixed; left: 0; right: 0; bottom: 0; z-index: 4; background: #fff; border-top: 1px solid var(--borde);
+                  padding: 10px 12px; padding-bottom: max(10px, env(safe-area-inset-bottom)); }
+  .pie-acciones .dentro { max-width: 680px; margin: 0 auto; display: flex; gap: 8px; }
+  .pie-acciones .boton { margin: 0; flex: 1; }
+  .pie-acciones .boton.atras { flex: 0 0 34%; }
+  .tipos { display: grid; gap: 10px; }
+  .tipos .item { justify-content: center; min-height: 64px; font-size: 20px; font-weight: 700; color: var(--naranja-osc); }
+  .seleccion { border-left: 5px solid var(--naranja); }
+  .resumen div { display: flex; justify-content: space-between; gap: 10px; padding: 3px 0; }
+  .resumen .total { font-size: 20px; font-weight: 800; border-top: 1px solid var(--borde); margin-top: 6px; padding-top: 8px; }
+  .resumen .ganancia { color: var(--ok); font-weight: 600; font-size: 14px; }
+  .linea { display: flex; justify-content: space-between; gap: 10px; padding: 8px 0; border-bottom: 1px solid #eef0f2; font-size: 14px; }
+  .linea:last-child { border-bottom: 0; }
+  .linea b { white-space: nowrap; }
+  .aviso-caja { background: var(--naranja-claro); border: 1px solid #f6c7b5; border-radius: 12px; padding: 12px; font-size: 14px; margin-bottom: 12px; }
+
+  /* Diálogo y aviso */
+  .capa { position: fixed; inset: 0; z-index: 20; background: rgba(20,26,32,.55); display: none; align-items: flex-end; justify-content: center; }
+  .capa.ver { display: flex; }
+  .dialogo { background: #fff; width: 100%; max-width: 680px; max-height: 92vh; overflow-y: auto; border-radius: 18px 18px 0 0; padding: 18px 16px; padding-bottom: max(18px, env(safe-area-inset-bottom)); }
+  .dialogo h2 { margin-top: 0; }
+  @media (min-width: 700px) { .capa { align-items: center; } .dialogo { border-radius: 16px; } }
+  .toast { position: fixed; left: 50%; bottom: 90px; transform: translateX(-50%); background: #263238; color: #fff; padding: 10px 16px; border-radius: 10px;
+           opacity: 0; transition: opacity .25s; pointer-events: none; z-index: 30; max-width: 90vw; text-align: center; font-size: 15px; }
+  .toast.ver { opacity: 1; }
+  .creando { position: fixed; inset: 0; z-index: 25; background: rgba(255,255,255,.96); display: none; align-items: center; justify-content: center; font-size: 18px; font-weight: 600; }
+  .creando.ver { display: flex; }
+
+  /* Vista de la hoja en pantalla */
+  .marco-hoja { overflow: hidden; margin: 0 auto; box-shadow: 0 4px 20px rgba(0,0,0,.15); }
+  .marco-hoja .hoja { transform-origin: top left; }
+  #zonaPdf { position: fixed; left: 0; top: 0; z-index: -1; pointer-events: none; }
+
+  /* ---------- Hoja A4 (igual que la app del ordenador) ---------- */
+  .hoja { width: 210mm; height: 297mm; position: relative; overflow: hidden; background: #fff;
+          font-family: Arial, Helvetica, sans-serif; color: #000; font-size: 10.5pt; line-height: 1.25; }
+  .hoja .ola { position: absolute; left: 0; top: 0; width: 210mm; height: 297mm; z-index: 0; }
+  .hoja .vertical { position: absolute; left: 4.5mm; top: 102mm; height: 80mm; z-index: 1; writing-mode: vertical-rl; transform: rotate(180deg); font-size: 7pt; text-align: center; white-space: nowrap; }
+  .hoja .pie { position: absolute; left: 0; right: 0; bottom: 0; height: 14mm; z-index: 1; background: var(--naranja); color: #fff; text-align: center; display: flex; flex-direction: column; justify-content: center; }
+  .hoja .pie .pag { font-size: 7pt; }
+  .hoja .pie .dir { font-size: 11.5pt; }
+  .hoja .contenido { position: absolute; z-index: 2; left: 22mm; right: 14mm; top: 9mm; bottom: 15.5mm; overflow: hidden; display: flex; flex-direction: column; }
+  .h-cab { display: flex; justify-content: space-between; align-items: flex-end; }
+  .h-cab .cred { font-size: 8.5pt; line-height: 1.3; text-transform: uppercase; padding-bottom: 2mm; }
+  .h-cab img { width: 55mm; display: block; }
+  .h-datos { display: flex; justify-content: space-between; margin-top: 3mm; align-items: flex-start; }
+  .h-cliente { width: 98mm; }
+  .h-cliente .tit { font-weight: 700; font-size: 12pt; margin-bottom: 1px; }
+  .h-cliente .caja { border: 1px solid #000; }
+  .h-cliente .caja div { border-bottom: 1px solid #000; min-height: 5.5mm; padding: .4mm 1.5mm; font-size: 11.5pt; }
+  .h-cliente .caja div:last-child { border-bottom: 0; text-align: center; font-size: 10pt; }
+  .h-cliente .dni { font-size: 9.5pt; }
+  .h-oferta { border-collapse: collapse; font-size: 9.5pt; width: 60mm; }
+  .h-oferta td { border: 1px solid #000; padding: .6mm 1.5mm; }
+  .h-oferta td:last-child { text-align: right; font-weight: 700; }
+  .h-texto { margin-top: 3mm; }
+  .h-texto p { margin: 0 0 1.5mm; }
+  .h-texto .just { text-align: justify; }
+  .h-cond div { margin: 0; }
+  .h-obra { font-weight: 700; font-size: 12.5pt; margin: 3mm 0 1.5mm 9mm; text-transform: uppercase; }
+  .h-partidas { width: 100%; border-collapse: collapse; font-size: 10.5pt; }
+  .h-partidas th { background: #dedede; font-weight: 700; padding: 1.2mm 1mm; text-align: left; border-top: 3px double #000; border-bottom: 1.5px solid #000; }
+  .h-partidas thead tr:first-child th { border-bottom: 0; padding-bottom: 0; }
+  .h-partidas thead tr:first-child th[rowspan] { border-bottom: 1.5px solid #000; vertical-align: middle; }
+  .h-partidas thead tr.sub th { border-top: 0; font-size: 8pt; font-weight: 400; padding-top: 0; }
+  .h-partidas .civa { background: rgba(0,0,0,.035); }
+  .h-partidas thead .civa { background: #d2d2d2; }
+  .h-partidas td { padding: .8mm 1mm 0; vertical-align: bottom; }
+  .h-partidas td.pos { vertical-align: top; text-align: center; }
+  .h-partidas .c { text-align: center; }
+  .h-partidas .r { text-align: right; white-space: nowrap; }
+  .h-partidas .desc { white-space: pre-wrap; }
+  .h-totales { width: 100%; border-collapse: collapse; margin-top: 2mm; font-size: 11.5pt; }
+  .h-totales td { border: 1.5px solid #000; padding: .5mm 1.5mm; }
+  .h-totales td:last-child { text-align: right; font-weight: 700; font-style: italic; width: 34mm; white-space: nowrap; }
+  .h-totales tr.iva td { font-size: 10pt; border-top-width: .5px; border-bottom-width: .5px; }
+  .h-totales tr.iva td:last-child { font-weight: 400; font-style: normal; }
+  .h-totales tr.final td { background: #dedede; font-weight: 700; }
+  .h-totales tr.final td:last-child { font-size: 12pt; }
+  .h-alt { margin-top: 3mm; font-size: 9.5pt; }
+  .h-alt .t { font-weight: 700; margin-bottom: .5mm; }
+  .h-alt table { width: 100%; border-collapse: collapse; }
+  .h-alt td { padding: .4mm 1mm; vertical-align: bottom; }
+  .h-alt .r { text-align: right; white-space: nowrap; }
+  .h-obs { margin-top: 3mm; font-size: 9.5pt; text-transform: uppercase; }
+  .h-obs .t { margin-bottom: 1mm; }
+  .h-obs div { white-space: pre-wrap; }
+  .h-firmas { display: flex; justify-content: space-between; margin-top: auto; padding-top: 3mm; font-size: 9.5pt; min-height: 26mm; }
+  .h-firmas .empresa { position: relative; width: 110mm; }
+  .h-firmas .empresa img { display: block; margin: 1mm 0 0 15mm; max-width: 60mm; max-height: 28mm; }
+  .h-firmas .cliente { width: 50mm; }
+</style>
+</head>
+<body>
+<header class="cab">
+  <img src="recursos/ovifon-logo-color.jpg" alt="OVIFON" data-a="inicio">
+  <h1 id="titulo">Presupuestos</h1>
+  <button class="nube" id="nube" data-a="nube">☁️ …</button>
+  <button class="icono" data-a="ajustes" title="Ajustes">⚙️</button>
+</header>
+<main id="vista"></main>
+<div class="pie-acciones" id="pie" hidden></div>
+<div class="capa" id="capa"><div class="dialogo" id="dialogo"></div></div>
+<div class="toast" id="toast"></div>
+<div class="creando" id="creando">Creando el PDF…</div>
+<div id="zonaPdf"></div>
+
+<script src="lib/html2canvas.min.js"></script>
+<script src="lib/jspdf.umd.min.js"></script>
+<script src="https://accounts.google.com/gsi/client" async></script>
+<script>
+(() => {
+  'use strict';
+
+  // ================== Configuración ==================
+  const VERSION = '1.0 (18/10/2026)';
+  const CLIENT_ID = '865473218575-ne9ju1eofd6e78pnaglqlsm8mambtflv.apps.googleusercontent.com';
+  // drive.file: la app solo puede ver los archivos que ella misma crea (no el resto de tu Google Drive)
+  const SCOPE = 'https://www.googleapis.com/auth/drive.file';
+  const RAIZ = 'OVIFON Presupuestos';
+  const CARPETAS = ['presupuestos', 'clientes', 'facturas', 'datos', 'PDF'];
+
+  // Datos públicos de la empresa (lo mismo que sale en la hoja). Se pueden cambiar con datos/empresa.json
+  const EMPRESA = {
+    credenciales: ['Empresa instaladora de gas categoría A Nº 231', 'Instaladora N.º 353', 'Mantenedora N.º 204 (de calefacción y climatización)', 'N.º R. Industrial 27188'],
+    titular: 'L. FERNANDO LOSADA PÉREZ - N.I.F.: 10.873.356-Z',
+    logo: 'recursos/ovifon-logo-color.jpg',
+    nombre: 'OVIFON', direccion: 'C/ Fuente de la Plata, nº 91 bajo', cp: '33013', poblacion: 'Oviedo',
+    telefono: '610 70 91 26 / 985 25 41 60', email: 'ovifon@gmail.com'
+  };
+  const piePresupuesto = e => `${e.direccion.replace(/,?\s*nº\s*/i, ', ')} • ${e.cp} ${e.poblacion} • Tel. ${e.telefono} • ${e.email}`;
+
+  // Valores por defecto. Los de verdad (descuentos, márgenes, precios) se leen de tu Google Drive, no están aquí.
+  const CHIMENEA_INICIAL = [
+    { id: 'metro', desc: 'TUBO DE CHIMENEA (METRO LINEAL)', unidad: 'm', precio: 50 },
+    { id: 'codo', desc: 'CODO DE CHIMENEA', unidad: 'ud', precio: 25 },
+    { id: 'dobleflujo', desc: 'CHIMENEA DE DOBLE FLUJO', unidad: 'ud', precio: 350 }
+  ];
+  const REGLAS_INICIALES = {
+    descuentos: { caldera: 0, termostato: 0 },
+    tipos: {
+      basico: { nombre: 'Básico', caldera: 0, termostato: 0, instalacion: 0 },
+      premium: { nombre: 'Premium', caldera: 0, termostato: 0, instalacion: 0 },
+      plus: { nombre: 'Plus', caldera: 0, termostato: 0, instalacion: 0 }
+    },
+    instalacion: { desc: 'INSTALACIÓN Y PEQUEÑO MATERIAL NECESARIO', tipos: [] }
+  };
+  const CATEGORIAS = { caldera: 'Caldera', termostato: 'Termostato' };
+  const OTRA_INSTALACION = 'otro';
+  const ESTADOS = { pendiente: 'Sin entregar', entregado: 'Entregado', aceptado: 'Aceptado', rechazado: 'Rechazado' };
+  const MAX_ALT = 2;
+
+  // ================== Estado ==================
+  let guardados = [], clientes = [], facturas = [], tarifas = [], catalogo = [];
+  let reglas = REGLAS_INICIALES, chimenea = CHIMENEA_INICIAL, sello = '';
+  let p = null;                 // presupuesto abierto
+  let pantalla = 'inicio', paso = 0;
+  let filtro = '', busqueda = '', busqPaso = '';
+  let verNumeros = false;
+  let instalarApp = null;       // aviso de Android para instalar la app
+
+  // ================== Utilidades ==================
+  const $ = s => document.querySelector(s);
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const num = v => { if (v === '' || v == null) return NaN; return typeof v === 'number' ? v : parseFloat(String(v).replace(',', '.')); };
+  const r2 = n => Math.round(n * 100) / 100;
+  function euros(n) {
+    if (n === '' || n == null || isNaN(n)) return '';
+    const [e, d] = Math.abs(n).toFixed(2).split('.');
+    return (n < 0 ? '-' : '') + e.replace(/\B(?=(\d{3})+(?!\d))/g, '.') + ',' + d + ' €';
+  }
+  const hoyISO = () => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10); };
+  const fechaES = iso => { if (!iso) return ''; const [a, m, d] = String(iso).split('-'); return `${d}/${m}/${a}`; };
+  const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+  const soloDigitos = t => String(t || '').replace(/\D/g, '');
+  const normal = s => String(s ?? '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  const esMovil = /Android|iPhone|iPad/i.test(navigator.userAgent);
+  let tToast = null;
+  function aviso(t) { const el = $('#toast'); el.textContent = t; el.classList.add('ver'); clearTimeout(tToast); tToast = setTimeout(() => el.classList.remove('ver'), 2800); }
+
+  // ================== Base de datos del móvil (copia de trabajo + cola de subida) ==================
+  // Google Drive es donde se guarda todo. Aquí se guarda una copia para trabajar sin cobertura,
+  // y la lista de cambios pendientes de subir.
+  const bd = {
+    db: null,
+    abrir() {
+      if (this.db) return Promise.resolve(this.db);
+      return new Promise((ok, mal) => {
+        const r = indexedDB.open('ovifon-movil', 1);
+        r.onupgradeneeded = () => { const d = r.result; d.createObjectStore('reg', { keyPath: 'clave' }); d.createObjectStore('cola', { keyPath: 'n', autoIncrement: true }); d.createObjectStore('kv'); };
+        r.onsuccess = () => ok(this.db = r.result);
+        r.onerror = () => mal(r.error);
+      });
+    },
+    async op(store, modo, f) {
+      const d = await this.abrir();
+      return new Promise((ok, mal) => { const t = d.transaction(store, modo); const q = f(t.objectStore(store)); t.oncomplete = () => ok(q?.result); t.onerror = () => mal(t.error); });
+    },
+    todos(s) { return this.op(s, 'readonly', st => st.getAll()); },
+    leer(s, k) { return this.op(s, 'readonly', st => st.get(k)); },
+    poner(s, v, k) { return this.op(s, 'readwrite', st => k === undefined ? st.put(v) : st.put(v, k)); },
+    borrar(s, k) { return this.op(s, 'readwrite', st => st.delete(k)); }
+  };
+
+  const nombreArchivo = x => (`${String(x.numero || 'sin numero').replace(/\//g, '-')} ${x.cliente?.nombre || ''}`).replace(/[\\/:*?"<>|\r\n\t]/g, '').replace(/\s+/g, ' ').trim().slice(0, 90) + '.json';
+  const nombreArchivoCliente = c => (`${c.nombre || 'cliente'} ${soloDigitos(c.telefono)}`).replace(/[\\/:*?"<>|\r\n\t]/g, '').replace(/\s+/g, ' ').trim().slice(0, 90) + '.json';
+  const nombreArchivoFactura = f => (`${String(f.numero).replace(/[\\/:*?"<>|]/g, '-')} ${f.cliente?.nombre || ''}`).replace(/[\r\n\t]/g, '').replace(/\s+/g, ' ').trim().slice(0, 90) + '.json';
+
+  // Guarda en el móvil y apunta que hay que subirlo a Drive
+  async function guardarRegistro(tipo, clave, nombre, datos) {
+    const prev = await bd.leer('reg', clave);
+    await bd.poner('reg', { clave, tipo, nombre, datos, driveId: prev?.driveId || null, mod: prev?.mod || null });
+    await bd.poner('cola', { op: 'subir', clave });
+  }
+
+  async function cargarLocal() {
+    const regs = await bd.todos('reg');
+    const de = t => regs.filter(r => r.tipo === t).map(r => r.datos);
+    guardados = de('presupuestos').sort((a, b) => String(b.guardado || '').localeCompare(String(a.guardado || '')));
+    clientes = de('clientes').sort((a, b) => String(a.nombre || '').localeCompare(String(b.nombre || ''), 'es'));
+    facturas = de('facturas');
+    const dato = n => regs.find(r => r.clave === 'datos/' + n)?.datos;
+    const ct = dato('catalogo tarifas.json');
+    tarifas = [];
+    for (const [marca, d] of Object.entries(ct?.marcas || {})) {
+      for (const c of d.calderas || []) tarifas.push({ ...c, marca, cat: 'caldera' });
+      for (const c of d.termostatos || []) tarifas.push({ ...c, marca, cat: 'termostato' });
+    }
+    // Los termostatos se venden aparte: fuera el pack «caldera + control» si existe la misma caldera sola
+    const solas = new Set(tarifas.filter(c => c.cat === 'caldera').map(c => c.desc));
+    tarifas = tarifas.filter(c => !(c.cat === 'caldera' && c.desc.includes(' + ') && solas.has(c.desc.split(' + ')[0].trim())));
+    const cond = dato('condiciones de compra.json');
+    reglas = cond?.descuentos && cond?.tipos ? cond : REGLAS_INICIALES;
+    if (!reglas.instalacion?.tipos) reglas.instalacion = REGLAS_INICIALES.instalacion;
+    const ch = dato('chimenea.json');
+    chimenea = Array.isArray(ch?.precios) ? ch.precios : CHIMENEA_INICIAL;
+    sello = dato('ajustes.json')?.sello || '';
+    catalogo = Array.isArray(dato('catalogo.json')) ? dato('catalogo.json') : [];
+    const emp = dato('empresa.json');
+    if (emp) for (const k of ['nombre', 'direccion', 'cp', 'poblacion', 'telefono', 'email']) if (emp[k]) EMPRESA[k] = emp[k];
+  }
+  const hayDatos = () => tarifas.length > 0 && reglas !== REGLAS_INICIALES;
+
+  // ================== Google: permiso y Google Drive ==================
+  let token = '', tokenHasta = 0, clienteGoogle = null, esperando = null;
+  try { const t = JSON.parse(sessionStorage.getItem('ovifon.token') || 'null'); if (t && t.hasta > Date.now()) { token = t.token; tokenHasta = t.hasta; } } catch { }
+  const tokenValido = () => !!token && Date.now() < tokenHasta;
+  function iniciarGoogle() {
+    if (clienteGoogle) return true;
+    if (!window.google?.accounts?.oauth2) return false;
+    clienteGoogle = google.accounts.oauth2.initTokenClient({
+      client_id: CLIENT_ID, scope: SCOPE,
+      callback: r => {
+        const e = esperando; esperando = null;
+        if (r.error) return e?.mal(new Error(r.error_description || r.error));
+        token = r.access_token; tokenHasta = Date.now() + (Number(r.expires_in || 3600) - 120) * 1000;
+        try { sessionStorage.setItem('ovifon.token', JSON.stringify({ token, hasta: tokenHasta })); localStorage.setItem('ovifon.google', '1'); } catch { }
+        e?.ok();
+      },
+      error_callback: err => { const e = esperando; esperando = null; e?.mal(new Error(err?.type === 'popup_closed' ? 'Ventana de Google cerrada' : (err?.message || 'Google no respondió'))); }
+    });
+    return true;
+  }
+  // Tiene que llamarse directamente desde un toque (si no, el navegador bloquea la ventana de Google)
+  function pedirToken() {
+    return new Promise((ok, mal) => {
+      if (!iniciarGoogle()) return mal(new Error('No se pudo cargar Google. ¿Hay internet?'));
+      esperando = { ok, mal };
+      let ya = false; try { ya = localStorage.getItem('ovifon.google') === '1'; } catch { }
+      clienteGoogle.requestAccessToken({ prompt: ya ? '' : 'consent' });
+    });
+  }
+
+  const API = 'https://www.googleapis.com/drive/v3', SUBIDA = 'https://www.googleapis.com/upload/drive/v3';
+  async function api(url, opc = {}) {
+    const r = await fetch(url, { ...opc, headers: { ...(opc.headers || {}), Authorization: 'Bearer ' + token } });
+    if (r.status === 401) { token = ''; throw new Error('sin-token'); }
+    if (!r.ok) throw new Error(`Drive ${r.status}: ${(await r.text()).slice(0, 160)}`);
+    return r;
+  }
+  const qs = s => encodeURIComponent(s);
+  const comillas = s => s.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+  async function buscar(nombre, padre, carpeta) {
+    const q = `name='${comillas(nombre)}' and trashed=false` + (carpeta ? " and mimeType='application/vnd.google-apps.folder'" : '') + (padre ? ` and '${padre}' in parents` : '');
+    const d = await (await api(`${API}/files?q=${qs(q)}&fields=files(id)&spaces=drive`)).json();
+    return d.files?.[0]?.id || null;
+  }
+  async function crearCarpeta(nombre, padre) {
+    const d = await (await api(`${API}/files?fields=id`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: nombre, mimeType: 'application/vnd.google-apps.folder', ...(padre ? { parents: [padre] } : {}) }) })).json();
+    return d.id;
+  }
+  async function existe(id) {
+    try { const d = await (await api(`${API}/files/${id}?fields=id,trashed`)).json(); return !d.trashed; }
+    catch (e) { if (e.message === 'sin-token') throw e; return false; }
+  }
+  let ids = null;
+  async function carpetas() {
+    if (ids) return ids;
+    const g = await bd.leer('kv', 'carpetas');
+    let raiz = g?.raiz && await existe(g.raiz) ? g.raiz : null;
+    if (!raiz) raiz = await buscar(RAIZ, null, true) || await crearCarpeta(RAIZ);
+    const n = { raiz };
+    for (const c of CARPETAS) n[c] = (g?.raiz === raiz && g[c]) || await buscar(c, raiz, true) || await crearCarpeta(c, raiz);
+    // Si la carpeta de Drive desapareció (borrada a mano), se vuelve a subir todo lo que hay en el móvil en vez de perderlo
+    if (g?.raiz && g.raiz !== raiz) {
+      for (const r of await bd.todos('reg')) { r.driveId = null; r.mod = null; await bd.poner('reg', r); await bd.poner('cola', { op: 'subir', clave: r.clave }); }
+    }
+    await bd.poner('kv', n, 'carpetas');
+    return ids = n;
+  }
+  const LIM = 'ovifon_' + uid();
+  const multiparte = (meta, contenido, tipo) => new Blob([
+    `--${LIM}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(meta)}\r\n--${LIM}\r\nContent-Type: ${tipo}\r\n\r\n`,
+    contenido, `\r\n--${LIM}--`]);
+  async function subirArchivo(carpeta, nombre, contenido, tipo, driveId) {
+    const cab = { 'Content-Type': 'multipart/related; boundary=' + LIM };
+    if (driveId) return (await api(`${SUBIDA}/files/${driveId}?uploadType=multipart&fields=id,modifiedTime`, { method: 'PATCH', headers: cab, body: multiparte({ name: nombre }, contenido, tipo) })).json();
+    return (await api(`${SUBIDA}/files?uploadType=multipart&fields=id,modifiedTime`, { method: 'POST', headers: cab, body: multiparte({ name: nombre, parents: [carpeta] }, contenido, tipo) })).json();
+  }
+
+  async function subirCola() {
+    const c = await carpetas();
+    const cola = await bd.todos('cola');
+    const ultimo = new Map(); cola.forEach(t => { if (t.op === 'subir') ultimo.set(t.clave, t.n); });
+    for (const t of cola) {
+      if (t.op === 'subir' && ultimo.get(t.clave) === t.n) {
+        const reg = await bd.leer('reg', t.clave);
+        if (reg) {
+          const texto = JSON.stringify(reg.datos, null, 2);
+          let res;
+          try { res = await subirArchivo(c[reg.tipo], reg.nombre, texto, 'application/json', reg.driveId); }
+          catch (e) { if (reg.driveId && /Drive 404/.test(e.message)) res = await subirArchivo(c[reg.tipo], reg.nombre, texto, 'application/json', null); else throw e; }
+          reg.driveId = res.id; reg.mod = res.modifiedTime; await bd.poner('reg', reg);
+        }
+      } else if (t.op === 'pdf') {
+        const previo = await buscar(t.nombre, c.PDF, false);
+        await subirArchivo(c.PDF, t.nombre, t.blob, 'application/pdf', previo);
+      } else if (t.op === 'borrar' && t.driveId) {
+        try { await api(`${API}/files/${t.driveId}`, { method: 'DELETE' }); } catch (e) { if (!/Drive 404/.test(e.message)) throw e; }
+      }
+      await bd.borrar('cola', t.n);
+    }
+  }
+
+  async function bajarTodo() {
+    const c = await carpetas();
+    const locales = await bd.todos('reg');
+    const porDrive = new Map(locales.filter(r => r.driveId).map(r => [r.driveId, r]));
+    const pendientes = new Set((await bd.todos('cola')).filter(t => t.op === 'subir').map(t => t.clave));
+    const vistos = new Set();
+    for (const tipo of ['presupuestos', 'clientes', 'facturas', 'datos']) {
+      let pagina = '';
+      do {
+        const q = `'${c[tipo]}' in parents and trashed=false`;
+        const d = await (await api(`${API}/files?q=${qs(q)}&fields=nextPageToken,files(id,name,modifiedTime)&pageSize=1000${pagina ? '&pageToken=' + pagina : ''}`)).json();
+        for (const f of d.files || []) {
+          if (!f.name.toLowerCase().endsWith('.json')) continue;
+          vistos.add(f.id);
+          const loc = porDrive.get(f.id);
+          if (loc && (loc.mod === f.modifiedTime || pendientes.has(loc.clave))) continue;   // sin cambios, o el cambio del móvil manda
+          let datos;
+          try { datos = await (await api(`${API}/files/${f.id}?alt=media`)).json(); } catch (e) { if (e.message === 'sin-token') throw e; continue; }
+          const clave = tipo === 'datos' ? 'datos/' + f.name : `${tipo}/${datos?.id || f.id}`;
+          await bd.poner('reg', { clave, tipo, nombre: f.name, datos, driveId: f.id, mod: f.modifiedTime });
+        }
+        pagina = d.nextPageToken;
+      } while (pagina);
+    }
+    // Lo borrado en Drive (desde el ordenador) se quita también del móvil
+    for (const r of locales) if (r.driveId && !vistos.has(r.driveId) && !pendientes.has(r.clave)) await bd.borrar('reg', r.clave);
+  }
+
+  let sincronizando = false, errorSync = '';
+  async function sincronizar(interactivo) {
+    if (sincronizando) return;
+    if (!navigator.onLine) { errorSync = ''; pintarNube(); if (interactivo) aviso('Sin internet: se subirá cuando haya conexión'); return; }
+    if (!tokenValido()) {
+      if (!interactivo) return pintarNube();
+      try { await pedirToken(); } catch (e) { aviso(e.message); return pintarNube(); }
+    }
+    sincronizando = true; errorSync = ''; pintarNube();
+    try {
+      await subirCola();
+      await bajarTodo();
+      await cargarLocal();
+      if (p) { const g = guardados.find(x => x.id === p.id); if (g && pantalla === 'inicio') p = null; }
+      if (pantalla === 'inicio' || pantalla === 'ajustes') pintar();
+    } catch (e) {
+      if (e.message === 'sin-token') { token = ''; errorSync = ''; } else { errorSync = e.message; aviso('No se pudo sincronizar con Google Drive'); }
+    } finally { sincronizando = false; pintarNube(); }
+  }
+  async function pintarNube() {
+    const b = $('#nube'); if (!b) return;
+    const pend = (await bd.todos('cola')).length;
+    b.className = 'nube';
+    if (sincronizando) b.textContent = '☁️ Subiendo…';
+    else if (!navigator.onLine) { b.textContent = pend ? `📴 ${pend} sin subir` : '📴 Sin internet'; b.classList.add('aviso'); }
+    else if (errorSync) { b.textContent = '⚠️ Reintentar'; b.classList.add('aviso'); }
+    else if (!tokenValido()) { b.textContent = pend ? `☁️ Conectar (${pend})` : '☁️ Conectar'; b.classList.add('aviso'); }
+    else if (pend) { b.textContent = `☁️ ${pend} sin subir`; b.classList.add('aviso'); }
+    else { b.textContent = '☁️ Al día'; b.classList.add('ok'); }
+  }
+  let tSync = null;
+  const programarSync = () => { pintarNube(); clearTimeout(tSync); tSync = setTimeout(() => { if (tokenValido()) sincronizar(false); }, 1500); };
+  window.addEventListener('online', () => { pintarNube(); if (tokenValido()) sincronizar(false); });
+  window.addEventListener('offline', pintarNube);
+
+  // ================== Precios ==================
+  function marcaDe(x) {
+    if (x.marca) return x.marca;
+    const d = normal(x.desc);
+    return Object.entries(reglas.descuentosPorMarca || {}).find(([m, v]) => typeof v === 'object' && d.includes(normal(m)))?.[0] || '';
+  }
+  function descuentoDe(x) {
+    const especial = num(reglas.descuentosPorMarca?.[marcaDe(x)]?.[x.cat]);
+    return !isNaN(especial) ? especial : (num(reglas.descuentos?.[x.cat]) || 0);
+  }
+  function calculo(x) {
+    if (!CATEGORIAS[x.cat]) return null;
+    const pvp = num(x.pvp);
+    if (isNaN(pvp)) return { coste: NaN, suplemento: NaN, precio: NaN };
+    const coste = r2(pvp * (1 - descuentoDe(x) / 100));
+    const suplemento = num(reglas.tipos?.[p?.tipo]?.[x.cat]);
+    return { coste, suplemento, precio: isNaN(suplemento) ? NaN : r2(coste + suplemento) };
+  }
+  const tiposInstalacion = () => reglas.instalacion?.tipos || [];
+  const suplInstalacion = () => num(reglas.tipos?.[p.tipo]?.instalacion) || 0;
+  function recalcular() {
+    for (const x of p.partidas) {
+      const c = calculo(x);
+      if (c) x.precio = isNaN(c.precio) ? '' : c.precio;
+      if (x.cat === 'instalacion' && p.instalacion !== OTRA_INSTALACION) {
+        const t = tiposInstalacion().find(i => i.id === p.instalacion);
+        x.precio = t && p.tipo ? r2(num(t.precio) + suplInstalacion()) : '';
+      }
+    }
+    for (const a of p.alternativas || []) { const c = calculo(a); if (c) a.precio = isNaN(c.precio) ? '' : c.precio; }
+  }
+  function totales() {
+    let base = 0;
+    for (const x of p.partidas) { const c = num(x.cant), pr = num(x.precio); if (!isNaN(c) && !isNaN(pr)) base += c * pr; }
+    base = r2(base);
+    const iva = r2(base * (num(p.iva) || 0) / 100);
+    return { base, iva, total: r2(base + iva) };
+  }
+  const conIva = n => r2(n * (1 + (num(p.iva) || 0) / 100));
+  const nombreTipo = t => reglas.tipos?.[t]?.nombre || '';
+  const estadoDe = g => g.estado && g.estado !== 'pendiente' ? g.estado : (g.envios || []).length ? 'entregado' : 'pendiente';
+  const etiquetaEstado = e => `<span class="estado ${esc(e)}">${esc(ESTADOS[e] || ESTADOS.pendiente)}</span>`;
+
+  // ================== Clientes ==================
+  function clienteVacio() { return { id: '', nombre: '', direccion: '', poblacion: '', telefono: '', dni: '', email: '' }; }
+  function letraDniCorrecta(dni) {
+    const d = String(dni || '').toUpperCase().replace(/[\s.-]/g, '');
+    const m = /^([XYZ]?)(\d{7,8})([A-Z])$/.exec(d);
+    if (!m) return null;
+    return 'TRWAGMYFPDXBNJZSQVHLCKE'[parseInt(({ X: '0', Y: '1', Z: '2' }[m[1]] || '') + m[2], 10) % 23] === m[3];
+  }
+  function erroresCliente(c) {
+    const e = [];
+    if (!String(c.nombre || '').trim()) e.push('Falta el nombre.');
+    if (!String(c.direccion || '').trim()) e.push('Falta la dirección.');
+    const tel = soloDigitos(c.telefono);
+    if (!tel) e.push('Falta el teléfono.'); else if (tel.length < 9) e.push('El teléfono debe tener al menos 9 cifras.');
+    if (String(c.email || '').trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(c.email.trim())) e.push('El correo no parece correcto.');
+    if (String(c.dni || '').trim()) {
+      const ok = letraDniCorrecta(c.dni);
+      if (ok === false) e.push('La letra del DNI/NIE no corresponde con el número.');
+      else if (ok === null && !/^[A-Z]\d{7}[0-9A-J]$/i.test(c.dni.replace(/[\s.-]/g, ''))) e.push('El DNI/NIE/CIF no tiene un formato válido.');
+    }
+    return e;
+  }
+  async function guardarCliente(c) {
+    if (!c.id) { const mismo = clientes.find(x => soloDigitos(x.telefono) && soloDigitos(x.telefono) === soloDigitos(c.telefono)); c.id = mismo ? mismo.id : uid(); }
+    const previo = clientes.find(x => x.id === c.id);
+    const ficha = { id: c.id, nombre: c.nombre.trim(), direccion: c.direccion.trim(), poblacion: (c.poblacion || '').trim(), telefono: (c.telefono || '').trim(),
+                    dni: (c.dni || '').trim().toUpperCase(), email: (c.email || '').trim(), alta: previo?.alta || new Date().toISOString(), actualizado: new Date().toISOString() };
+    await guardarRegistro('clientes', 'clientes/' + ficha.id, nombreArchivoCliente(ficha), ficha);
+    const i = clientes.findIndex(x => x.id === ficha.id);
+    if (i >= 0) clientes[i] = ficha; else clientes.push(ficha);
+  }
+
+  // ================== Presupuestos ==================
+  function siguienteNumero() {
+    const aa = String(new Date().getFullYear()).slice(2);
+    let max = 0;
+    for (const g of guardados) { const m = /^(\d+)\/(\d+)$/.exec(String(g.numero || '').trim()); if (m && m[2] === aa) max = Math.max(max, parseInt(m[1], 10)); }
+    return `${max + 1}/${aa}`;
+  }
+  function nuevo() {
+    return {
+      id: uid(), numero: siguienteNumero(), ref: '', fecha: hoyISO(), tipo: '', instalacion: '', estado: 'pendiente',
+      obra: 'CAMBIO DE CALDERA EN OVIEDO', cliente: clienteVacio(), partidas: [], iva: 21,
+      portes: 'N/ Cargo.', pago: 'contado al acabar la instalación.', entrega: 'S/necesidades.', validez: '30 días.',
+      observaciones: 'TODA LA INSTALACIÓN SE REALIZARÁ CON TUBERÍA DE COBRE VISTA.\nCERTIFICADO INCLUIDO.\nEL PAGO SE REALIZARÁ AL ACABAR LA INSTALACIÓN.',
+      opcionales: '', alternativas: []
+    };
+  }
+  let guardadoNuevo = false;
+  async function guardarPresupuesto(silencioso = true) {
+    if (!p || erroresCliente(p.cliente).length) return false;
+    p.guardado = new Date().toISOString();
+    p.total = totales().total;
+    const copia = JSON.parse(JSON.stringify(p));
+    await guardarRegistro('presupuestos', 'presupuestos/' + p.id, nombreArchivo(p), copia);
+    const i = guardados.findIndex(g => g.id === p.id);
+    if (i >= 0) guardados[i] = copia; else guardados.unshift(copia);
+    guardadoNuevo = true;
+    if (!silencioso) aviso('Guardado');
+    programarSync();
+    return true;
+  }
+  function abrir(id) {
+    const g = guardados.find(x => x.id === id); if (!g) return;
+    p = JSON.parse(JSON.stringify(g));
+    p.cliente = { ...clienteVacio(), ...p.cliente };
+    if (!Array.isArray(p.alternativas)) p.alternativas = [];
+    p.estado = estadoDe(p);
+    recalcular();
+    pantalla = 'editor'; paso = PASOS.length - 1; busqPaso = '';
+    pintar();
+  }
+  const partida = cat => p.partidas.find(x => x.cat === cat);
+  function ponerPartida(cat, datos) {
+    let x = partida(cat);
+    if (!x) {
+      x = { desc: '', cat, cant: 1, ud: '', precio: '' };
+      // orden: instalación, caldera, termostato, y luego el resto
+      const orden = ['instalacion', 'caldera', 'termostato'];
+      const pos = p.partidas.findIndex(y => !orden.includes(y.cat) || orden.indexOf(y.cat) > orden.indexOf(cat));
+      if (pos < 0) p.partidas.push(x); else p.partidas.splice(pos, 0, x);
+    }
+    Object.assign(x, datos);
+    if (!datos.marca) delete x.marca;
+    recalcular();
+  }
+  const quitarPartida = cat => { p.partidas = p.partidas.filter(x => x.cat !== cat); };
+
+  // ================== Búsqueda en el catálogo ==================
+  function buscarCatalogo(q, cat) {
+    const palabras = normal(q).split(/\s+/).filter(Boolean);
+    if (!palabras.length) return [];
+    return tarifas.filter(c => c.cat === cat).filter(c => {
+      const t = normal([c.desc, c.marca, c.gama, c.tipo].join(' '));
+      return palabras.every(w => t.includes(w) || normal(c.ref) === w);
+    }).sort((a, b) => (a.desc.includes('+') - b.desc.includes('+')) || a.desc.localeCompare(b.desc, 'es', { numeric: true })).slice(0, 40);
+  }
+  const precioCliente = item => p.tipo ? calculo({ cat: item.cat, pvp: item.pvp, marca: item.marca, desc: item.desc }).precio : NaN;
+  let resultados = [];
+  function htmlResultados(q, cat, accion) {
+    if (!q.trim()) return '';
+    resultados = buscarCatalogo(q, cat);
+    if (!resultados.length) return `<div class="vacio">No hay nada con «${esc(q)}».${tarifas.length ? '' : ' El catálogo está vacío: mira en ⚙️ Ajustes.'}</div>`;
+    return resultados.map((c, k) => {
+      const pr = precioCliente(c);
+      const info = [c.marca, c.kw ? c.kw + ' kW' : '', c.tipo, verNumeros ? `PVP ${euros(c.pvp)}` : ''].filter(Boolean).map(esc).join(' · ');
+      return `<button class="item" data-a="${accion}" data-k="${k}"><span class="txt">${esc(c.desc)}<small>${info}</small></span>
+        <span class="precio">${isNaN(pr) ? '' : `${euros(conIva(pr))}<small>con IVA</small>`}</span></button>`;
+    }).join('');
+  }
+
+  // ================== Pantallas ==================
+  const PASOS = [
+    { id: 'cliente', titulo: 'Cliente' },
+    { id: 'tipo', titulo: 'Tipo de presupuesto' },
+    { id: 'instalacion', titulo: 'Instalación' },
+    { id: 'caldera', titulo: 'Caldera' },
+    { id: 'termostato', titulo: 'Termostato' },
+    { id: 'otras', titulo: 'Otras calderas para elegir' },
+    { id: 'extras', titulo: 'Chimenea y otros' },
+    { id: 'revisar', titulo: 'Revisar y enviar' }
+  ];
+
+  function pintar() {
+    const v = $('#vista'), pie = $('#pie');
+    pie.hidden = true; pie.innerHTML = '';
+    if (pantalla === 'inicio') { $('#titulo').textContent = 'Presupuestos'; v.innerHTML = htmlInicio(); }
+    else if (pantalla === 'ajustes') { $('#titulo').textContent = 'Ajustes'; v.innerHTML = htmlAjustes(); }
+    else if (pantalla === 'hoja') { $('#titulo').textContent = `Presupuesto ${p.numero}`; v.innerHTML = '<div class="marco-hoja" id="marcoHoja"></div>'; pintarHojaPantalla(); pieHoja(); }
+    else if (pantalla === 'editor') { $('#titulo').textContent = `Presupuesto ${p.numero}`; v.innerHTML = htmlPaso(); piePaso(); }
+    pintarNube();
+  }
+  function ir(nueva) { pantalla = nueva; window.scrollTo(0, 0); pintar(); }
+
+  // ---------- Inicio ----------
+  function htmlInicio() {
+    const n = e => guardados.filter(g => !e || estadoDe(g) === e).length;
+    const q = normal(busqueda);
+    const lista = guardados.filter(g => (!filtro || estadoDe(g) === filtro) &&
+      (!q || normal([g.numero, g.cliente?.nombre, g.cliente?.telefono, g.cliente?.direccion, g.obra].join(' ')).includes(q)));
+    return `
+      ${!hayDatos() ? `<div class="aviso-caja">${tokenValido()
+        ? 'Todavía no hay catálogo ni precios en tu Google Drive. Pásalos desde el ordenador: <b>⚙️ Ajustes → Pasar mis datos del ordenador</b>.'
+        : 'Pulsa <b>☁️ Conectar</b> (arriba) y entra con tu cuenta de Google para cargar tus datos.'}</div>` : ''}
+      ${instalarApp ? '<button class="boton" data-a="instalar">📲 Instalar la app en este aparato</button>' : ''}
+      <button class="boton primario grande" data-a="nuevo">➕ Nuevo presupuesto</button>
+      <h2 style="margin-top:20px">Mis presupuestos</h2>
+      <input id="buscarInicio" placeholder="🔍 Buscar cliente, teléfono o número" value="${esc(busqueda)}" autocomplete="off">
+      <div class="chips" style="margin-top:10px">
+        ${[['', 'Todos'], ['pendiente', 'Sin entregar'], ['entregado', 'Entregados'], ['aceptado', 'Aceptados'], ['rechazado', 'Rechazados']]
+          .map(([k, t]) => `<button class="chip ${filtro === k ? 'activo' : ''}" data-a="filtro" data-v="${k}">${t} (${n(k)})</button>`).join('')}
+      </div>
+      <div class="lista" id="listaInicio">${htmlListaPresupuestos(lista)}</div>`;
+  }
+  function htmlListaPresupuestos(lista) {
+    if (!lista.length) return `<div class="vacio">${guardados.length ? 'Ninguno coincide' : 'Todavía no hay presupuestos'}</div>`;
+    return lista.map(g => {
+      const cal = (g.partidas || []).find(x => x.cat === 'caldera');
+      return `<button class="item" data-a="abrir" data-id="${esc(g.id)}">
+        <span class="num">${esc(g.numero)}</span>
+        <span class="txt">${esc(g.cliente?.nombre || '(sin nombre)')}<small>${esc(fechaES(g.fecha))}${cal ? ' · ' + esc(cal.desc.replace(/^CALDERA\s+/i, '')) : ''}</small></span>
+        <span class="precio">${euros(g.total)}<br>${g.factura ? `<span class="estado aceptado">Factura ${esc(g.factura)}</span>` : etiquetaEstado(estadoDe(g))}</span>
+      </button>`;
+    }).join('');
+  }
+
+  // ---------- Pasos del presupuesto ----------
+  function htmlPaso() {
+    const P = PASOS[paso];
+    const cab = `<div class="paso-tit"><span>Paso ${paso + 1} de ${PASOS.length}</span><span>${esc(p.cliente.nombre || '')}</span></div>
+      <div class="progreso"><div style="width:${(paso + 1) / PASOS.length * 100}%"></div></div><h2>${P.titulo}</h2>`;
+    return cab + ({ cliente: htmlCliente, tipo: htmlTipo, instalacion: htmlInstalacion, caldera: () => htmlProducto('caldera'),
+                    termostato: () => htmlProducto('termostato'), otras: htmlOtras, extras: htmlExtras, revisar: htmlRevisar })[P.id]();
+  }
+  function piePaso() {
+    const pie = $('#pie'); pie.hidden = false;
+    const ultimo = paso === PASOS.length - 1;
+    pie.innerHTML = `<div class="dentro">
+      <button class="boton atras" data-a="atras">${paso === 0 ? '✕ Salir' : '‹ Atrás'}</button>
+      ${ultimo ? '<button class="boton primario" data-a="enviar">📤 Enviar PDF</button>' : '<button class="boton primario" data-a="siguiente">Siguiente ›</button>'}
+    </div>`;
+  }
+  const campo = (ruta, etiqueta, extra = '') => {
+    const v = ruta.split('.').reduce((a, k) => a?.[k], p);
+    return `<label>${etiqueta}</label><input data-c="${ruta}" value="${esc(v ?? '')}" ${extra}>`;
+  };
+
+  function htmlCliente() {
+    return `
+      ${clientes.length ? `<div class="tarjeta"><label style="margin-top:0">¿Es un cliente que ya tienes?</label>
+        <input data-busq="cliente" placeholder="🔍 Nombre o teléfono" value="${esc(busqPaso)}" autocomplete="off">
+        <div class="lista" id="resCli" style="margin-top:8px">${htmlBuscarCliente()}</div></div>` : ''}
+      <div class="tarjeta"><h3>Datos del cliente</h3>
+        ${campo('cliente.nombre', 'Nombre y apellidos *', 'autocapitalize="characters" autocomplete="off"')}
+        ${campo('cliente.direccion', 'Dirección *', 'autocapitalize="characters" placeholder="Calle, número, piso" autocomplete="off"')}
+        ${campo('cliente.poblacion', 'C.P. y población', 'autocapitalize="characters" placeholder="33012 Oviedo" autocomplete="off"')}
+        ${campo('cliente.telefono', 'Teléfono *', 'inputmode="tel" autocomplete="off"')}
+        ${campo('cliente.dni', 'DNI / NIE (opcional)', 'autocapitalize="characters" autocomplete="off"')}
+        ${campo('cliente.email', 'Correo (opcional)', 'inputmode="email" autocapitalize="none" autocomplete="off"')}
+        <div class="falta" id="errCli" style="margin-top:10px"></div>
+        <p class="nota">🎤 Para dictar, toca una casilla y pulsa el micrófono del teclado.</p>
+      </div>`;
+  }
+  function htmlBuscarCliente() {
+    const q = normal(busqPaso);
+    const tel = soloDigitos(p.cliente.telefono);
+    let html = '';
+    if (q) {
+      const res = clientes.filter(x => normal([x.nombre, x.telefono, x.direccion, x.poblacion].join(' ')).includes(q) || (soloDigitos(q) && soloDigitos(x.telefono).includes(soloDigitos(q)))).slice(0, 15);
+      html = res.length ? res.map(x => `<button class="item ${x.id === p.cliente.id ? 'elegido' : ''}" data-a="elegirCliente" data-id="${esc(x.id)}">
+        <span class="txt">${esc(x.nombre)}<small>${esc([x.direccion, x.poblacion].filter(Boolean).join(', '))}</small></span><span>${esc(x.telefono)}</span></button>`).join('')
+        : '<div class="vacio">Ningún cliente coincide. Escribe sus datos abajo.</div>';
+    }
+    if (p.cliente.id || tel) {
+      const previos = guardados.filter(g => g.id !== p.id && ((p.cliente.id && g.cliente?.id === p.cliente.id) || (tel && soloDigitos(g.cliente?.telefono) === tel)));
+      if (previos.length) html += `<p class="nota"><b>Este cliente ya tiene ${previos.length} presupuesto${previos.length > 1 ? 's' : ''}.</b> Toca uno para abrirlo, o sigue para hacer uno nuevo:</p>` +
+        previos.map(g => `<button class="item" data-a="abrir" data-id="${esc(g.id)}"><span class="num">${esc(g.numero)}</span>
+          <span class="txt">${esc(fechaES(g.fecha))}<small>${esc(g.obra || '')}</small></span><span class="precio">${euros(g.total)}<br>${etiquetaEstado(estadoDe(g))}</span></button>`).join('');
+    }
+    return html;
+  }
+
+  function htmlTipo() {
+    return `<div class="tipos">${Object.entries(reglas.tipos).map(([k, v]) =>
+      `<button class="item ${p.tipo === k ? 'elegido' : ''}" data-a="tipo" data-v="${k}">${esc(v.nombre)}${verNumeros ? `<small style="font-size:12px;font-weight:400;margin-left:8px">caldera +${v.caldera} € · termostato +${v.termostato} €</small>` : ''}</button>`).join('')}</div>`;
+  }
+
+  function htmlInstalacion() {
+    const supl = suplInstalacion();
+    const x = partida('instalacion');
+    return `<div class="lista">
+      ${tiposInstalacion().map(t => {
+        const pr = r2(num(t.precio) + supl);
+        return `<button class="item ${p.instalacion === t.id ? 'elegido' : ''}" data-a="instalacion" data-v="${esc(t.id)}">
+          <span class="txt">${esc(t.nombre)}</span><span class="precio">${euros(conIva(pr))}<small>con IVA</small></span></button>`;
+      }).join('')}
+      <button class="item ${p.instalacion === OTRA_INSTALACION ? 'elegido' : ''}" data-a="instalacion" data-v="${OTRA_INSTALACION}"><span class="txt">Otro tipo de instalación<small>pongo yo el precio</small></span></button>
+      <button class="item ${p.instalacion === 'ninguna' ? 'elegido' : ''}" data-a="sinInstalacion"><span class="txt">Sin instalación</span></button>
+    </div>
+    ${p.instalacion === OTRA_INSTALACION && x ? `<div class="tarjeta" style="margin-top:12px">
+      <label style="margin-top:0">Descripción</label><textarea data-p="desc" data-cat="instalacion" rows="2">${esc(x.desc)}</textarea>
+      <label>Precio sin IVA (€)</label><input data-p="precio" data-cat="instalacion" inputmode="decimal" value="${esc(x.precio)}"></div>` : ''}`;
+  }
+
+  function htmlProducto(cat) {
+    const x = partida(cat);
+    const nombre = cat === 'caldera' ? 'caldera' : 'termostato';
+    const verPvp = verNumeros || (x && (x.pvp === '' || x.pvp === undefined));
+    return `
+      ${x ? `<div class="tarjeta seleccion"><small style="color:var(--suave)">Elegido:</small>
+        <div style="font-weight:600;margin:4px 0">${esc(x.desc) || '(sin descripción)'}</div>
+        <div>${isNaN(num(x.precio)) ? '<span class="falta">Falta el precio</span>' : `<b>${euros(conIva(num(x.precio)))}</b> con IVA · ${euros(num(x.precio))} sin IVA`}</div>
+        ${verNumeros ? `<p class="nota">${textoCalculo(x)}</p>` : ''}
+        <button class="boton mini peligro" style="margin-top:8px" data-a="quitar" data-cat="${cat}">Quitar ${nombre}</button></div>` : ''}
+      <div class="tarjeta"><label style="margin-top:0">${x ? 'Cambiar por otr' + (cat === 'caldera' ? 'a' : 'o') : 'Buscar ' + nombre}: escribe la marca o parte del modelo</label>
+        <input data-busq="${cat}" placeholder="🔍 ${cat === 'caldera' ? 'ej. 4300i, inidens, ecotec' : 'ej. vaillant, smart, radio'}" value="${esc(busqPaso)}" autocomplete="off">
+        <div class="lista" id="res${cat}" style="margin-top:8px">${htmlResultados(busqPaso, cat, 'elegir-' + cat)}</div></div>
+      ${cat === 'termostato' && !x ? '<button class="boton" data-a="siguiente">Sin termostato ›</button>' : ''}
+      <details class="tarjeta"><summary>Escribir a mano (no está en el catálogo)</summary>
+        <label>Marca y modelo</label><textarea data-p="desc" data-cat="${cat}" rows="2">${esc(x?.desc || '')}</textarea>
+        ${verPvp || !x ? `<label>PVP de tarifa sin IVA (€)</label><input data-p="pvp" data-cat="${cat}" inputmode="decimal" value="${esc(x?.pvp ?? '')}">` : ''}
+      </details>`;
+  }
+  function textoCalculo(x) {
+    const c = calculo(x); if (!c || isNaN(c.coste)) return '';
+    const m = marcaDe(x), esp = m && reglas.descuentosPorMarca?.[m]?.[x.cat] !== undefined;
+    return `PVP ${euros(num(x.pvp))} − ${descuentoDe(x)} %${esp ? ' ' + esc(m) : ''} = coste ${euros(c.coste)} + ${euros(c.suplemento)} ${esc(nombreTipo(p.tipo))} = ${euros(c.precio)}`;
+  }
+
+  function htmlOtras() {
+    const L = p.alternativas;
+    return `<p class="nota" style="margin:0 2px 10px">Por si el cliente duda: hasta ${MAX_ALT} calderas más. Salen aparte en el presupuesto con su precio y <b>no se suman</b> al total.</p>
+      <div class="lista">${L.map((a, i) => `<div class="tarjeta" style="margin:0">
+        <div style="font-weight:600">${esc(a.desc)}</div>
+        <div style="margin:4px 0 8px">${isNaN(num(a.precio)) ? '' : `<b>${euros(conIva(num(a.precio)))}</b> con IVA`}</div>
+        <div class="botones"><button class="boton mini" data-a="usarAlt" data-i="${i}">⇄ El cliente prefiere esta</button><button class="boton mini peligro" data-a="quitarAlt" data-i="${i}">✕ Quitar</button></div>
+      </div>`).join('')}</div>
+      ${L.length < MAX_ALT ? `<div class="tarjeta" style="margin-top:12px"><label style="margin-top:0">Añadir otra caldera</label>
+        <input data-busq="alt" placeholder="🔍 Marca o parte del modelo" value="${esc(busqPaso)}" autocomplete="off">
+        <div class="lista" id="resalt" style="margin-top:8px">${htmlResultados(busqPaso, 'caldera', 'elegir-alt')}</div></div>` : ''}`;
+  }
+
+  const esChimenea = x => !x.cat && chimenea.some(c => c.desc === x.desc);
+  function htmlExtras() {
+    const ch = id => p.partidas.find(x => !x.cat && x.desc === precioChimenea(id).desc);
+    const libres = p.partidas.map((x, i) => [x, i]).filter(([x]) => !x.cat && !esChimenea(x));
+    return `
+      <div class="tarjeta"><h3>Chimenea</h3>
+        <div class="fila2">
+          <div><label>Metros de tubo (${euros(precioChimenea('metro').precio)}/m)</label><input id="chMetros" inputmode="decimal" value="${esc(ch('metro')?.cant ?? '')}"></div>
+          <div><label>Codos (${euros(precioChimenea('codo').precio)}/ud)</label><input id="chCodos" inputmode="numeric" value="${esc(ch('codo')?.cant ?? '')}"></div>
+        </div>
+        <label style="display:flex;align-items:center;gap:10px;font-size:15px;color:var(--texto)"><input type="checkbox" id="chDoble" style="width:22px;height:22px" ${ch('dobleflujo') ? 'checked' : ''}> Chimenea de doble flujo (${euros(precioChimenea('dobleflujo').precio)})</label>
+        <button class="boton" data-a="chimenea">Poner chimenea en el presupuesto</button>
+      </div>
+      <div class="tarjeta"><h3>Otras partidas</h3>
+        ${libres.map(([x, i]) => `<div style="border-top:1px solid #eef0f2;padding-top:8px;margin-top:8px">
+          <textarea data-i="${i}" data-f="desc" rows="2" placeholder="Descripción">${esc(x.desc)}</textarea>
+          <div class="fila3" style="margin-top:6px"><input data-i="${i}" data-f="cant" inputmode="decimal" value="${esc(x.cant)}" placeholder="Cant.">
+            <input data-i="${i}" data-f="precio" inputmode="decimal" value="${esc(x.precio)}" placeholder="€ sin IVA">
+            <button class="boton mini peligro" data-a="quitarLibre" data-i="${i}">✕</button></div></div>`).join('')}
+        <button class="boton" data-a="anadirLibre">+ Añadir partida</button>
+      </div>
+      <div class="tarjeta"><h3>Observaciones</h3>
+        <label style="margin-top:0">Una por línea (en la hoja salen seguidas)</label><textarea data-c="observaciones" rows="4">${esc(p.observaciones)}</textarea>
+        <label>Opcional (no suma al total)</label><textarea data-c="opcionales" rows="2" placeholder="TERMOSTATO INALÁMBRICO 128 €">${esc(p.opcionales)}</textarea>
+      </div>
+      <details class="tarjeta"><summary>Más datos (obra, IVA, forma de pago…)</summary>
+        ${campo('obra', 'Obra', 'autocapitalize="characters"')}
+        <label>I.V.A.</label><select data-c="iva">${[21, 10, 0].map(v => `<option value="${v}" ${num(p.iva) === v ? 'selected' : ''}>${v ? v + ' %' : 'Sin IVA'}</option>`).join('')}</select>
+        ${campo('pago', 'Forma de pago')}${campo('validez', 'Oferta válida')}${campo('entrega', 'Fecha de entrega')}${campo('portes', 'Portes')}
+        <label>Fecha</label><input type="date" data-c="fecha" value="${esc(p.fecha)}">
+      </details>`;
+  }
+  const precioChimenea = id => chimenea.find(c => c.id === id) || CHIMENEA_INICIAL.find(c => c.id === id);
+
+  function htmlRevisar() {
+    const t = totales(), c = p.cliente;
+    let ganancia = 0;
+    for (const x of p.partidas) { const k = calculo(x), n = num(x.cant); if (k && !isNaN(k.precio) && !isNaN(n)) ganancia += r2((k.precio - k.coste) * n); }
+    const alts = p.alternativas.filter(a => a.desc.trim());
+    return `
+      <div class="tarjeta"><b>${esc(c.nombre)}</b><div class="nota" style="margin:2px 0 0">${esc(c.direccion)}${c.poblacion ? ', ' + esc(c.poblacion) : ''} · ${esc(c.telefono)}</div>
+        <div class="nota">${esc(nombreTipo(p.tipo) || 'Sin tipo')} · ${esc(fechaES(p.fecha))}</div></div>
+      <div class="tarjeta">
+        ${p.partidas.filter(x => x.desc.trim() || x.precio !== '').map(x => `<div class="linea"><span>${esc(x.desc)}${num(x.cant) !== 1 ? ` <small>(x${esc(x.cant)})</small>` : ''}</span>
+          <b>${isNaN(num(x.precio)) ? '<span class="falta">sin precio</span>' : euros(r2(num(x.precio) * (num(x.cant) || 0)))}</b></div>`).join('') || '<div class="vacio">No hay partidas</div>'}
+        <div class="resumen" style="margin-top:8px">
+          <div><span>Total sin IVA</span><span>${euros(t.base)}</span></div>
+          <div><span>I.V.A. ${esc(p.iva)} %</span><span>${euros(t.iva)}</span></div>
+          <div class="total"><span>TOTAL</span><span>${euros(t.total)}</span></div>
+          ${verNumeros ? `<div class="ganancia"><span>Tu beneficio en caldera y termostato</span><span>${euros(ganancia)}</span></div>` : ''}
+        </div>
+      </div>
+      ${alts.length ? `<div class="tarjeta"><h3>Otras calderas (no suman)</h3>${alts.map(a => `<div class="linea"><span>${esc(a.desc)}</span><b>${euros(conIva(num(a.precio)))}</b></div>`).join('')}</div>` : ''}
+      <div class="tarjeta"><label style="margin-top:0">Estado</label>
+        <select data-c="estado">${Object.entries(ESTADOS).map(([k, v]) => `<option value="${k}" ${p.estado === k ? 'selected' : ''}>${v}</option>`).join('')}</select>
+        ${p.factura ? `<p class="nota">🧾 Tiene la factura ${esc(p.factura)}</p>` : ''}
+      </div>
+      <button class="boton" data-a="verHoja">👁 Ver la hoja del presupuesto</button>
+      <div class="botones">
+        <button class="boton" data-a="numeros">${verNumeros ? '🙈 Ocultar mis números' : '👁 Mis números'}</button>
+        <button class="boton" data-a="duplicar">⧉ Duplicar</button>
+      </div>
+      <button class="boton peligro" data-a="borrar">🗑 Borrar presupuesto</button>
+      <p class="nota" style="text-align:center">Se guarda solo en tu Google Drive.</p>`;
+  }
+
+  // ---------- Hoja A4 ----------
+  function htmlHoja() {
+    const t = totales(), tipo = num(p.iva) || 0, c = p.cliente;
+    const filas = p.partidas.filter(x => x.desc.trim() || x.precio !== '').map((x, i) => {
+      const cn = num(x.cant), pr = num(x.precio), tot = !isNaN(cn) && !isNaN(pr) ? r2(cn * pr) : NaN;
+      return `<tr><td class="pos">${i + 1}</td><td class="desc">${esc(x.desc)}</td><td class="c">${esc(x.cant)}</td>
+        <td class="r">${euros(pr)}</td><td class="r">${euros(tot)}</td><td class="r civa">${euros(isNaN(tot) ? NaN : conIva(tot))}</td></tr>`;
+    }).join('');
+    const ivaTxt = tipo === 0 ? 'exento' : `${tipo} %`;
+    const tablaTotales = tipo === 0
+      ? `<tr class="final"><td>TOTAL PRESUPUESTO</td><td>${euros(t.total)}</td></tr>`
+      : `<tr><td>TOTAL PRESUPUESTO SIN IVA</td><td>${euros(t.base)}</td></tr><tr class="iva"><td>I.V.A. ${tipo} %</td><td>${euros(t.iva)}</td></tr>
+         <tr class="final"><td>TOTAL PRESUPUESTO CON IVA</td><td>${euros(t.total)}</td></tr>`;
+    const obs = String(p.observaciones || '').split(/\n+/).map(s => s.trim()).filter(Boolean).join(' ');
+    const opc = String(p.opcionales || '').trim();
+    const alts = (p.alternativas || []).filter(a => a.desc.trim());
+    const bloqueAlt = alts.length ? `<div class="h-alt"><div class="t">OTRAS OPCIONES DE CALDERA (NO INCLUIDAS EN EL TOTAL) · PRECIO CON IVA:</div>
+      <table><tbody>${alts.map(a => `<tr><td>${esc(a.desc)}</td><td class="r"><b>${euros(isNaN(num(a.precio)) ? NaN : conIva(num(a.precio)))}</b></td></tr>`).join('')}</tbody></table></div>` : '';
+    return `<div class="hoja">
+      <svg class="ola" viewBox="0 0 210 297" preserveAspectRatio="none" aria-hidden="true"><path d="M0 104 C30 140 56 190 55 236 C54.5 262 43 279 29 290 L0 290 Z" fill="#b2e1f2"/></svg>
+      <div class="vertical">${esc(EMPRESA.titular)}</div>
+      <div class="contenido">
+        <div class="h-cab"><div class="cred">${EMPRESA.credenciales.map(esc).join('<br>')}</div><img src="${EMPRESA.logo}" alt="OVIFON"></div>
+        <div class="h-datos">
+          <div class="h-cliente"><div class="tit">CLIENTE:</div><div class="caja">
+            <div>${esc(c.nombre)}${c.dni ? ` <span class="dni">· DNI ${esc(c.dni)}</span>` : ''}</div><div>${esc(c.direccion)}</div><div>${esc(c.poblacion)}</div>
+            <div>${esc([c.telefono ? 'Tel. ' + c.telefono : '', c.email].filter(Boolean).join(' · '))}</div></div></div>
+          <table class="h-oferta"><tr><td>Oferta nº:</td><td>${esc(p.numero)}</td></tr><tr><td>N/ref:</td><td>${esc(p.ref)}</td></tr><tr><td>Fecha:</td><td>${esc(fechaES(p.fecha))}</td></tr></table>
+        </div>
+        <div class="h-texto"><p>Muy Sres. nuestros:</p>
+          <p class="just">En contestación a su atenta consulta de referencia, les remitimos oferta de los materiales y mano de obra solicitados, según las condiciones que se indican:</p>
+          <div class="h-cond"><div>Portes: <b>${esc(p.portes)}</b></div><div>I.V.A.: <b>${esc(ivaTxt)}</b></div><div>Forma de Pago: <b>${esc(p.pago)}</b></div>
+            <div>Fecha de entrega: <b>${esc(p.entrega)}</b></div><div>Oferta válida: <b>${esc(p.validez)}</b></div></div></div>
+        <div class="h-obra">OBRA: ${esc(p.obra)}</div>
+        <table class="h-partidas">
+          <colgroup><col style="width:9mm"><col><col style="width:12mm"><col style="width:23mm"><col style="width:24mm"><col style="width:25mm"></colgroup>
+          <thead><tr><th class="c" rowspan="2">POS</th><th rowspan="2">DESCRIPCIÓN</th><th class="c" rowspan="2">CANT.</th><th class="r">P. UNITARIO</th><th class="r">P. TOTAL</th><th class="r civa">P. TOTAL</th></tr>
+            <tr class="sub"><th class="r">sin IVA</th><th class="r">sin IVA</th><th class="r civa">con IVA ${esc(ivaTxt)}</th></tr></thead>
+          <tbody>${filas}</tbody></table>
+        <table class="h-totales">${tablaTotales}</table>
+        ${bloqueAlt}
+        ${obs ? `<div class="h-obs"><div class="t">OBSERVACIONES:</div><div>${esc(obs)}</div></div>` : ''}
+        ${opc ? `<div class="h-obs"><div class="t">OPCIONAL:</div><div>${esc(opc)}</div></div>` : ''}
+        <div class="h-firmas"><div class="empresa">ATENTAMENTE: LA EMPRESA${sello ? `<img src="${sello}" alt="">` : ''}</div><div class="cliente">ACEPTO:<br>POR EL CLIENTE</div></div>
+      </div>
+      <div class="pie"><div class="pag">Página 1 de 1</div><div class="dir">${esc(piePresupuesto(EMPRESA))}</div></div>
+    </div>`;
+  }
+  function pintarHojaPantalla() {
+    const m = $('#marcoHoja'); if (!m) return;
+    m.innerHTML = htmlHoja();
+    const h = m.querySelector('.hoja');
+    const s = Math.min(1, m.parentElement.clientWidth / h.offsetWidth);
+    h.style.transform = `scale(${s})`;
+    m.style.width = h.offsetWidth * s + 'px'; m.style.height = h.offsetHeight * s + 'px';
+    const c = h.querySelector('.contenido');
+    if (c.scrollHeight > c.clientHeight + 1) aviso('Ojo: el presupuesto no cabe en una página');
+  }
+  function pieHoja() {
+    const pie = $('#pie'); pie.hidden = false;
+    pie.innerHTML = `<div class="dentro"><button class="boton atras" data-a="volverRevisar">‹ Volver</button><button class="boton primario" data-a="enviar">📤 Enviar PDF</button></div>`;
+  }
+
+  // ---------- PDF ----------
+  const nombrePdf = () => `Presupuesto ${String(p.numero).replace(/\//g, '-')} ${p.cliente.nombre || ''}`.replace(/[\\/:*?"<>|]/g, '').replace(/\s+/g, ' ').trim() + '.pdf';
+  async function generarPdf() {
+    const zona = $('#zonaPdf');
+    zona.innerHTML = htmlHoja();
+    try {
+      const hoja = zona.querySelector('.hoja');
+      await Promise.all([...hoja.querySelectorAll('img')].map(i => i.complete ? null : new Promise(ok => { i.onload = i.onerror = ok; })));
+      const canvas = await html2canvas(hoja, {
+        scale: 2, backgroundColor: '#ffffff', logging: false, windowWidth: 1000, windowHeight: 1400, scrollX: 0, scrollY: 0,
+        onclone: doc => {
+          const v = doc.querySelector('#zonaPdf .vertical');
+          if (v) Object.assign(v.style, { writingMode: 'horizontal-tb', transform: 'rotate(-90deg)', transformOrigin: 'center center',
+            left: '-34mm', top: '140.5mm', width: '80mm', height: '3mm', lineHeight: '3mm', textAlign: 'center' });
+        }
+      });
+      const pdf = new window.jspdf.jsPDF({ unit: 'mm', format: 'a4', compress: true });
+      pdf.addImage(canvas.toDataURL('image/jpeg', 0.9), 'JPEG', 0, 0, 210, 297);
+      pdf.setProperties({ title: nombrePdf().replace(/\.pdf$/, ''), author: 'OVIFON' });
+      return new File([pdf.output('blob')], nombrePdf(), { type: 'application/pdf' });
+    } finally { zona.innerHTML = ''; }
+  }
+  function telefonoWhatsApp(tel) { let d = soloDigitos(tel); if (d.startsWith('00')) d = d.slice(2); if (d.length === 9) d = '34' + d; return d; }
+  function textoEnvio() {
+    const t = totales(), nombre = (p.cliente.nombre || '').split(' ')[0];
+    const n = s => s.charAt(0) + s.slice(1).toLowerCase();
+    return `Hola${nombre ? ' ' + n(nombre) : ''}, le envío el presupuesto nº ${p.numero} de OVIFON` +
+      `${p.obra ? ' para ' + p.obra.toLowerCase().replace(/\b(en|de) ([a-záéíóúñü])/g, (m, a, l) => `${a} ${l.toUpperCase()}`) : ''}. Importe total: ${euros(t.total)} (IVA incluido).\n\n` +
+      `Cualquier duda, estoy a su disposición.\nUn saludo,\nLuis Fernando - OVIFON\n${EMPRESA.telefono}`;
+  }
+  async function apuntarEnvio(medio) {
+    p.envios = [...(p.envios || []), { medio, fecha: new Date().toISOString() }];
+    if (!p.estado || p.estado === 'pendiente') p.estado = 'entregado';
+    await guardarPresupuesto();
+  }
+  async function enviar() {
+    if (erroresCliente(p.cliente).length) { paso = 0; ir('editor'); return aviso('Faltan datos del cliente'); }
+    if (!p.tipo && p.partidas.some(x => CATEGORIAS[x.cat] || x.cat === 'instalacion')) { paso = 1; ir('editor'); return aviso('Elige el tipo de presupuesto'); }
+    await guardarPresupuesto();
+    $('#creando').classList.add('ver');
+    let archivo;
+    try { archivo = await generarPdf(); }
+    catch (e) { aviso('No se pudo crear el PDF: ' + (e.message || e.name)); return; }
+    finally { $('#creando').classList.remove('ver'); }
+    await bd.poner('cola', { op: 'pdf', nombre: archivo.name, blob: archivo });   // copia del PDF en Drive (carpeta PDF)
+    programarSync();
+    dialogoEnvio(archivo);
+  }
+  function dialogoEnvio(archivo) {
+    const c = p.cliente, tel = telefonoWhatsApp(c.telefono);
+    const compartir = !!(navigator.canShare && navigator.share && navigator.canShare({ files: [archivo] }));
+    abrirDialogo(`<h2>Enviar el presupuesto ${esc(p.numero)}</h2>
+      <p class="nota" style="margin-top:0">✅ PDF creado: ${esc(archivo.name)} · <a href="#" data-a="verPdf">verlo</a></p>
+      <label>Mensaje</label><textarea id="envTexto" rows="6">${esc(textoEnvio())}</textarea>
+      ${compartir ? '<button class="boton primario grande" data-a="compartir">📤 Enviar con el PDF adjunto</button><p class="nota">Se abre el menú de compartir: elige <b>WhatsApp</b> o <b>Gmail</b> y el contacto. El PDF ya va puesto.</p>' : ''}
+      <div class="botones">
+        ${tel ? '<button class="boton" data-a="whatsapp">📱 WhatsApp</button>' : ''}
+        ${c.email ? '<button class="boton" data-a="correo">✉ Correo</button>' : ''}
+      </div>
+      <p class="nota">${tel ? '<b>WhatsApp</b> abre el chat del cliente con el mensaje (adjunta el PDF con el clip). ' : ''}${c.email ? '<b>Correo</b> abre un correo para el cliente (adjunta el PDF).' : ''}</p>
+      <button class="boton" data-a="cerrarDialogo">Cerrar</button>`);
+    dialogoArchivo = archivo;
+  }
+  let dialogoArchivo = null;
+  function abrirDialogo(html) { $('#dialogo').innerHTML = html; $('#capa').classList.add('ver'); }
+  function cerrarDialogo() { $('#capa').classList.remove('ver'); $('#dialogo').innerHTML = ''; }
+
+  // ---------- Ajustes ----------
+  function htmlAjustes() {
+    const nCal = tarifas.filter(t => t.cat === 'caldera').length, nTer = tarifas.filter(t => t.cat === 'termostato').length;
+    return `
+      <div class="tarjeta"><h3>☁️ Google Drive</h3>
+        <p class="nota" style="margin-top:0">${tokenValido() ? '✅ Conectado.' : 'Sin conectar.'} Todo se guarda en tu Google Drive, en la carpeta <b>${RAIZ}</b>. La app solo puede ver esa carpeta.</p>
+        <button class="boton primario" data-a="nube">${tokenValido() ? '🔄 Sincronizar ahora' : '☁️ Conectar con Google'}</button>
+        ${errorSync ? `<p class="falta">Último error: ${esc(errorSync)}</p>` : ''}
+      </div>
+      <div class="tarjeta"><h3>📋 Datos cargados</h3>
+        <div class="linea"><span>Calderas en el catálogo</span><b>${nCal}</b></div>
+        <div class="linea"><span>Termostatos</span><b>${nTer}</b></div>
+        <div class="linea"><span>Clientes</span><b>${clientes.length}</b></div>
+        <div class="linea"><span>Presupuestos</span><b>${guardados.length}</b></div>
+        <div class="linea"><span>Precios y márgenes</span><b>${reglas !== REGLAS_INICIALES ? '✅' : '❌'}</b></div>
+        <div class="linea"><span>Sello y firma</span><b>${sello ? '✅' : '❌'}</b></div>
+      </div>
+      ${window.showDirectoryPicker ? `<div class="tarjeta"><h3>💻 Pasar mis datos del ordenador</h3>
+        <p class="nota" style="margin-top:0">Sube a Google Drive el catálogo, los precios, el sello, los clientes y los presupuestos de la carpeta <b>PRESUPUESTOS DE CALDERAS</b>. Se puede repetir (por ejemplo, cuando haya tarifas nuevas).</p>
+        <button class="boton" data-a="importar">📂 Elegir la carpeta PRESUPUESTOS DE CALDERAS</button></div>` : ''}
+      <div class="tarjeta"><h3>👁 Mis números</h3>
+        <p class="nota" style="margin-top:0">Muestra tu coste, el PVP y tu beneficio. Por defecto están ocultos por si el cliente mira la pantalla.</p>
+        <button class="boton" data-a="numeros">${verNumeros ? '🙈 Ocultar mis números' : '👁 Ver mis números'}</button></div>
+      ${instalarApp ? '<button class="boton" data-a="instalar">📲 Instalar la app en este aparato</button>' : ''}
+      <button class="boton" data-a="inicio">‹ Volver</button>
+      <p class="nota" style="text-align:center">OVIFON Presupuestos · versión ${VERSION}</p>`;
+  }
+
+  // Pasar los datos de la carpeta del ordenador a Google Drive (solo en el ordenador, con Edge o Chrome)
+  async function importar() {
+    if (!tokenValido()) return aviso('Primero pulsa «Conectar con Google»');
+    let raiz;
+    try { raiz = await window.showDirectoryPicker({ mode: 'read' }); } catch { return; }
+    const sub = async (...ruta) => { let d = raiz; try { for (const r of ruta) d = await d.getDirectoryHandle(r); return d; } catch { return null; } };
+    const leer = async (dir, n) => { try { return JSON.parse(await (await (await dir.getFileHandle(n)).getFile()).text()); } catch { return null; } };
+    const todos = async dir => { const out = []; if (!dir) return out; for await (const [n, h] of dir.entries()) if (h.kind === 'file' && n.toLowerCase().endsWith('.json')) { try { out.push(JSON.parse(await (await h.getFile()).text())); } catch { } } return out; };
+    const dDatos = await sub('datos');
+    if (!dDatos || !(await leer(dDatos, 'catalogo tarifas.json'))) return aviso('Esa no es la carpeta PRESUPUESTOS DE CALDERAS (no tiene datos\\catalogo tarifas.json)');
+    $('#creando').textContent = 'Pasando los datos…'; $('#creando').classList.add('ver');
+    let n = 0;
+    try {
+      for (const f of ['catalogo tarifas.json', 'condiciones de compra.json', 'ajustes.json', 'catalogo.json', 'empresa.json']) {
+        const d = await leer(dDatos, f); if (d) { await guardarRegistro('datos', 'datos/' + f, f, d); n++; }
+      }
+      const ch = await leer(await sub('precios propios') || dDatos, 'chimenea.json'); if (ch) { await guardarRegistro('datos', 'datos/chimenea.json', 'chimenea.json', ch); n++; }
+      for (const c of await todos(await sub('clientes'))) if (c.id) { delete c.archivo; await guardarRegistro('clientes', 'clientes/' + c.id, nombreArchivoCliente(c), c); n++; }
+      for (const g of await todos(await sub('presupuestos guardados'))) if (g.id) { delete g.archivo; await guardarRegistro('presupuestos', 'presupuestos/' + g.id, nombreArchivo(g), g); n++; }
+      for (const f of await todos(await sub('facturas'))) if (f.id) { delete f.archivo; await guardarRegistro('facturas', 'facturas/' + f.id, nombreArchivoFactura(f), f); n++; }
+      await cargarLocal();
+    } finally { $('#creando').classList.remove('ver'); $('#creando').textContent = 'Creando el PDF…'; }
+    aviso(`${n} archivos preparados. Subiendo a Google Drive…`);
+    pintar();
+    await sincronizar(false);
+    aviso('Datos pasados a Google Drive');
+  }
+
+  // ================== Acciones (toques) ==================
+  const acciones = {
+    inicio: () => { p = null; ir('inicio'); },
+    ajustes: () => ir('ajustes'),
+    nube: () => sincronizar(true),
+    instalar: async () => { if (!instalarApp) return; instalarApp.prompt(); await instalarApp.userChoice; instalarApp = null; pintar(); },
+    filtro: b => { filtro = b.dataset.v; pintar(); },
+    nuevo: () => {
+      if (!hayDatos()) aviso('Ojo: aún no hay catálogo ni precios cargados');
+      p = nuevo(); paso = 0; busqPaso = ''; guardadoNuevo = false; ir('editor');
+    },
+    abrir: b => abrir(b.dataset.id),
+    atras: async () => {
+      if (paso === 0) { if (guardados.some(g => g.id === p.id)) await guardarPresupuesto(); p = null; return ir('inicio'); }
+      paso--; busqPaso = ''; ir('editor');
+    },
+    siguiente: async () => {
+      if (PASOS[paso].id === 'cliente') {
+        const errs = erroresCliente(p.cliente);
+        if (errs.length) { $('#errCli').innerHTML = errs.map(esc).join('<br>'); return; }
+        await guardarCliente(p.cliente);
+        if (!String(p.ref || '').trim()) p.ref = p.cliente.telefono;
+      }
+      await guardarPresupuesto();
+      paso = Math.min(paso + 1, PASOS.length - 1); busqPaso = ''; ir('editor');
+    },
+    elegirCliente: b => {
+      const x = clientes.find(k => k.id === b.dataset.id); if (!x) return;
+      p.cliente = { ...clienteVacio(), ...x }; delete p.cliente.alta; delete p.cliente.actualizado;
+      busqPaso = ''; pintar();
+    },
+    tipo: async b => { p.tipo = b.dataset.v; recalcular(); await guardarPresupuesto(); paso++; ir('editor'); },
+    instalacion: async b => {
+      p.instalacion = b.dataset.v;
+      ponerPartida('instalacion', { desc: partida('instalacion')?.desc || reglas.instalacion.desc });
+      if (p.instalacion === OTRA_INSTALACION) return pintar();
+      await guardarPresupuesto(); paso++; ir('editor');
+    },
+    sinInstalacion: async () => { quitarPartida('instalacion'); p.instalacion = 'ninguna';await guardarPresupuesto(); paso++; ir('editor'); },
+    'elegir-caldera': b => elegirProducto('caldera', b),
+    'elegir-termostato': b => elegirProducto('termostato', b),
+    quitar: async b => { quitarPartida(b.dataset.cat); await guardarPresupuesto(); pintar(); },
+    'elegir-alt': async b => {
+      const it = resultados[+b.dataset.k]; if (!it) return;
+      p.alternativas.push({ desc: it.desc, cat: 'caldera', pvp: it.pvp, marca: it.marca, precio: '' });
+      recalcular(); busqPaso = ''; await guardarPresupuesto(); pintar(); aviso('Caldera añadida');
+    },
+    quitarAlt: async b => { p.alternativas.splice(+b.dataset.i, 1); await guardarPresupuesto(); pintar(); },
+    usarAlt: async b => {
+      const i = +b.dataset.i, el = p.alternativas[i], m = partida('caldera');
+      if (m) p.alternativas[i] = { desc: m.desc, cat: 'caldera', pvp: m.pvp, marca: m.marca, precio: '' }; else p.alternativas.splice(i, 1);
+      ponerPartida('caldera', { desc: el.desc, pvp: el.pvp, marca: el.marca, cant: 1 });
+      await guardarPresupuesto(); pintar(); aviso('Caldera cambiada en el presupuesto');
+    },
+    chimenea: async () => {
+      const metros = num($('#chMetros').value), codos = num($('#chCodos').value), doble = $('#chDoble').checked;
+      p.partidas = p.partidas.filter(x => !esChimenea(x));
+      const m = precioChimenea('metro'), c = precioChimenea('codo'), d = precioChimenea('dobleflujo');
+      if (doble) p.partidas.push({ desc: d.desc, cant: 1, ud: '', precio: d.precio });
+      if (metros > 0) p.partidas.push({ desc: m.desc, cant: metros, ud: '', precio: m.precio });
+      if (codos > 0) p.partidas.push({ desc: c.desc, cant: codos, ud: '', precio: c.precio });
+      await guardarPresupuesto(); pintar(); aviso(doble || metros > 0 || codos > 0 ? 'Chimenea puesta' : 'Chimenea quitada');
+    },
+    anadirLibre: () => { p.partidas.push({ desc: '', cant: 1, ud: '', precio: '' }); pintar(); },
+    quitarLibre: async b => { p.partidas.splice(+b.dataset.i, 1); await guardarPresupuesto(); pintar(); },
+    verHoja: () => ir('hoja'),
+    volverRevisar: () => { paso = PASOS.length - 1; ir('editor'); },
+    numeros: () => { verNumeros = !verNumeros; pintar(); },
+    duplicar: async () => {
+      await guardarPresupuesto();
+      p = JSON.parse(JSON.stringify(p));
+      p.id = uid(); p.numero = siguienteNumero(); p.fecha = hoyISO();
+      delete p.facturaId; delete p.factura; delete p.envios; p.estado = 'pendiente';
+      await guardarPresupuesto(); paso = 0; ir('editor'); aviso(`Copia creada: ${p.numero}`);
+    },
+    borrar: async () => {
+      if (p.facturaId) return aviso(`No se puede borrar: tiene la factura ${p.factura}`);
+      if (!confirm(`¿Borrar el presupuesto ${p.numero} de ${p.cliente.nombre || 'sin nombre'}?`)) return;
+      const reg = await bd.leer('reg', 'presupuestos/' + p.id);
+      await bd.borrar('reg', 'presupuestos/' + p.id);
+      if (reg?.driveId) await bd.poner('cola', { op: 'borrar', driveId: reg.driveId });
+      guardados = guardados.filter(g => g.id !== p.id);
+      p = null; programarSync(); ir('inicio'); aviso('Presupuesto borrado');
+    },
+    enviar: () => enviar(),
+    importar: () => importar(),
+    cerrarDialogo: () => cerrarDialogo(),
+    verPdf: (b, e) => { e.preventDefault(); const u = URL.createObjectURL(dialogoArchivo); window.open(u, '_blank'); setTimeout(() => URL.revokeObjectURL(u), 60000); },
+    compartir: async () => {
+      const texto = $('#envTexto').value;
+      try {
+        await navigator.share({ files: [dialogoArchivo], title: `Presupuesto nº ${p.numero} - OVIFON`, text: texto });
+        await apuntarEnvio('compartir'); cerrarDialogo(); aviso('Presupuesto enviado: queda como «Entregado»'); pintar();
+      } catch (e) { if (e.name !== 'AbortError') aviso('No se pudo compartir: ' + e.message); }
+    },
+    whatsapp: async () => {
+      window.open(`https://wa.me/${telefonoWhatsApp(p.cliente.telefono)}?text=${encodeURIComponent($('#envTexto').value)}`, '_blank', 'noopener');
+      await apuntarEnvio('WhatsApp'); aviso('Adjunta el PDF con el clip y envía');
+    },
+    correo: async () => {
+      const asunto = `Presupuesto nº ${p.numero} - OVIFON`, texto = $('#envTexto').value, to = p.cliente.email.trim();
+      if (esMovil) location.href = `mailto:${to}?subject=${encodeURIComponent(asunto)}&body=${encodeURIComponent(texto)}`;
+      else window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(to)}&su=${encodeURIComponent(asunto)}&body=${encodeURIComponent(texto)}`, '_blank', 'noopener');
+      await apuntarEnvio('correo'); aviso('Adjunta el PDF y envía');
+    }
+  };
+  async function elegirProducto(cat, b) {
+    const it = resultados[+b.dataset.k]; if (!it) return;
+    ponerPartida(cat, { desc: it.desc, pvp: it.pvp, marca: it.marca, cant: partida(cat)?.cant || 1 });
+    busqPaso = ''; await guardarPresupuesto();
+    aviso(`${CATEGORIAS[cat]} elegid${cat === 'caldera' ? 'a' : 'o'}`);
+    paso++; ir('editor');
+  }
+
+  document.addEventListener('click', e => {
+    if (e.target.id === 'capa') return cerrarDialogo();
+    const b = e.target.closest('[data-a]'); if (!b) return;
+    const f = acciones[b.dataset.a]; if (f) f(b, e);
+  });
+
+  // Escribir en las casillas
+  let tGuardar = null;
+  const guardarLuego = () => { clearTimeout(tGuardar); tGuardar = setTimeout(() => { if (p && guardados.some(g => g.id === p.id)) guardarPresupuesto(); }, 800); };
+  document.addEventListener('input', e => {
+    const el = e.target;
+    if (el.id === 'buscarInicio') { busqueda = el.value; const q = normal(busqueda);
+      $('#listaInicio').innerHTML = htmlListaPresupuestos(guardados.filter(g => (!filtro || estadoDe(g) === filtro) && (!q || normal([g.numero, g.cliente?.nombre, g.cliente?.telefono, g.cliente?.direccion, g.obra].join(' ')).includes(q)))); return; }
+    if (!p) return;
+    if (el.dataset.busq) {
+      busqPaso = el.value;
+      const k = el.dataset.busq;
+      if (k === 'cliente') $('#resCli').innerHTML = htmlBuscarCliente();
+      else if (k === 'alt') $('#resalt').innerHTML = htmlResultados(busqPaso, 'caldera', 'elegir-alt');
+      else $('#res' + k).innerHTML = htmlResultados(busqPaso, k, 'elegir-' + k);
+      return;
+    }
+    if (el.dataset.c) {
+      const ks = el.dataset.c.split('.'), ult = ks.pop();
+      ks.reduce((a, k) => a[k], p)[ult] = el.dataset.c === 'iva' ? num(el.value) : el.value;
+      if (el.dataset.c === 'cliente.telefono' && $('#resCli')) $('#resCli').innerHTML = htmlBuscarCliente();
+      guardarLuego(); return;
+    }
+    if (el.dataset.p) {   // partida escrita a mano (caldera, termostato o instalación)
+      const cat = el.dataset.cat;
+      if (!partida(cat)) ponerPartida(cat, { desc: '', pvp: '' });
+      const x = partida(cat);
+      x[el.dataset.p] = el.value;
+      if (el.dataset.p === 'desc') delete x.marca;
+      recalcular(); guardarLuego(); return;
+    }
+    if (el.dataset.f) { const x = p.partidas[+el.dataset.i]; if (x) { x[el.dataset.f] = el.value; guardarLuego(); } }
+  });
+  document.addEventListener('change', e => {
+    if (p && e.target.dataset.c === 'estado') guardarPresupuesto(false);
+    if (p && e.target.dataset.p) pintar();   // al terminar de escribir a mano, que se vea el precio
+  });
+
+  window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); instalarApp = e; if (pantalla === 'inicio') pintar(); });
+  window.addEventListener('resize', () => { if (pantalla === 'hoja') pintarHojaPantalla(); });
+
+  // ================== Arranque ==================
+  if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => { });
+  (async () => {
+    try { await cargarLocal(); } catch (e) { aviso('No se pudieron leer los datos del móvil: ' + e.message); }
+    pintar();
+    // Si ya había permiso de Google en esta sesión, sincroniza solo
+    if (tokenValido()) sincronizar(false);
+  })();
+})();
+</script>
+</body>
+</html>
